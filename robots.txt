@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hydrexcleaning.co.uk/sitemap.xml

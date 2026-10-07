@@ -1,0 +1,21 @@
+{
+  "name": "hydrex-website",
+  "version": "1.0.0",
+  "description": "Official website for HYDREX - Window & Exterior Cleaning across Derby and surrounding areas",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test tests/pricing.test.js",
+    "build": "node scripts/build.js"
+  },
+  "keywords": [
+    "hydrex",
+    "window-cleaning",
+    "exterior-cleaning",
+    "derby"
+  ],
+  "author": "HYDREX",
+  "license": "UNLICENSED"
+}

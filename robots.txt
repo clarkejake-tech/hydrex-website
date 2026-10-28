@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://hydrexcleaning.co.uk/sitemap.xml
+Sitemap: https://hydrex.uk/sitemap.xml

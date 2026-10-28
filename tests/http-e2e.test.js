@@ -65,6 +65,24 @@ test('HTTP Server - Verifying All Routes on Port 3000', async (t) => {
     }
   });
 
+  await t.test('Canonical URLs and sitemap use the live hydrex.uk domain', async () => {
+    const htmlRoutes = routes.filter(route => route === '/' || route.endsWith('.html'));
+
+    for (const route of htmlRoutes) {
+      const res = await fetchUrl(route);
+      assert.match(res.body, /<link rel="canonical" href="https:\/\/hydrex\.uk\//i, `${route} should use the live domain`);
+      assert.doesNotMatch(res.body, /hydrexcleaning\.co\.uk/i, `${route} should not reference the old domain`);
+    }
+
+    const [robots, sitemap] = await Promise.all([
+      fetchUrl('/robots.txt'),
+      fetchUrl('/sitemap.xml')
+    ]);
+    assert.match(robots.body, /Sitemap:\s*https:\/\/hydrex\.uk\/sitemap\.xml/i);
+    assert.match(sitemap.body, /<loc>https:\/\/hydrex\.uk\//i);
+    assert.doesNotMatch(sitemap.body, /hydrexcleaning\.co\.uk/i);
+  });
+
   await t.test('Homepage shows the complete clean offer without the AI van image', async () => {
     const res = await fetchUrl('/');
     assert.strictEqual(res.status, 200);

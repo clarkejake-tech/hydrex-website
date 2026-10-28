@@ -14,7 +14,7 @@ export class HydrexQuoteWizard {
     this.state = {
       mode: 'window', // 'window' or 'exterior-only'
       step: 1,
-      totalSteps: 8,
+      totalSteps: 5,
       postcode: '',
       propertyId: '',
       frequency: '4w',
@@ -23,12 +23,6 @@ export class HydrexQuoteWizard {
         extension: false,
       },
       otherServices: [],
-      // Contact
-      name: '',
-      phone: '',
-      houseNumber: '',
-      street: '',
-      email: '',
       notes: '',
       // Calculated
       calculation: null,
@@ -36,6 +30,7 @@ export class HydrexQuoteWizard {
 
     this.loadPersistedState();
     this.handleUrlParameters();
+    this.state.step = Math.min(this.state.totalSteps, Math.max(1, Number(this.state.step) || 1));
     this.render();
   }
 
@@ -44,7 +39,9 @@ export class HydrexQuoteWizard {
       const saved = sessionStorage.getItem('hydrex_quote_draft');
       if (saved) {
         const parsed = JSON.parse(saved);
-        this.state = { ...this.state, ...parsed };
+        const { email, name, phone, houseNumber, street, ...draft } = parsed;
+        this.state = { ...this.state, ...draft };
+        this.persistState();
       }
     } catch (e) {
       // storage unavailable
@@ -98,7 +95,7 @@ export class HydrexQuoteWizard {
 
     this.recalculate();
     const { step } = this.state;
-    const progressPercent = Math.round((step / 8) * 100);
+    const progressPercent = Math.round((step / this.state.totalSteps) * 100);
 
     let stepHtml = '';
     switch (step) {
@@ -107,9 +104,6 @@ export class HydrexQuoteWizard {
       case 3: stepHtml = this.renderStep3Frequency(); break;
       case 4: stepHtml = this.renderStep4Extras(); break;
       case 5: stepHtml = this.renderStep5Result(); break;
-      case 6: stepHtml = this.renderStep6OtherServices(); break;
-      case 7: stepHtml = this.renderStep7Details(); break;
-      case 8: stepHtml = this.renderStep8Summary(); break;
       default: stepHtml = this.renderStep1Postcode();
     }
 
@@ -119,7 +113,7 @@ export class HydrexQuoteWizard {
           <div class="quote-progress-bar" style="width: ${progressPercent}%;"></div>
         </div>
         <div class="quote-header">
-          <span class="quote-step-indicator">Step ${step} of 8 &bull; ${this.getStepTitle(step)}</span>
+          <span class="quote-step-indicator">Step ${step} of ${this.state.totalSteps} &bull; ${this.getStepTitle(step)}</span>
           ${step > 1 ? `
             <button type="button" class="quote-back-btn" id="btnBackStep">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -146,10 +140,7 @@ export class HydrexQuoteWizard {
       case 2: return 'Property Type';
       case 3: return 'Cleaning Schedule';
       case 4: return 'Window Extras';
-      case 5: return 'Your Regular Price';
-      case 6: return 'Additional Services';
-      case 7: return 'Your Details';
-      case 8: return 'Confirm & WhatsApp';
+      case 5: return 'Your Instant Price';
       default: return '';
     }
   }
@@ -169,7 +160,6 @@ export class HydrexQuoteWizard {
             placeholder="e.g. DE22 3NE" 
             value="${this.state.postcode || ''}" 
             autocomplete="postal-code"
-            autofocus
           >
           <div class="form-error-msg" id="postcodeError">Please enter a valid UK postcode (e.g. DE1 2AB).</div>
           <p class="form-hint" style="text-align:center;">Address details & schedule are confirmed before your first clean.</p>
@@ -310,6 +300,15 @@ export class HydrexQuoteWizard {
       `;
     }
 
+    const whatsappUrl = buildWindowWhatsAppUrl({
+      postcode: this.state.postcode,
+      propertyTitle: calc.propertyTitle,
+      frequency: calc.frequency,
+      extrasBreakdown: calc.extrasBreakdown,
+      totalPrice: calc.totalPrice,
+      isManual: calc.isManual,
+    });
+
     if (calc.isManual) {
       return `
         <div class="price-display-card">
@@ -327,7 +326,7 @@ export class HydrexQuoteWizard {
 
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
           <button type="button" class="btn btn-secondary" id="btnEditSelections">Change Property Details</button>
-          <button type="button" class="btn btn-primary btn-lg" id="btnRequestClean">Continue to Request Quote &rarr;</button>
+          <a class="btn btn-whatsapp btn-lg" id="btnRequestClean" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Ask about my quote on WhatsApp &rarr;</a>
         </div>
       `;
     }
@@ -348,180 +347,7 @@ export class HydrexQuoteWizard {
 
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
         <button type="button" class="btn btn-secondary" id="btnEditSelections">Edit Selections</button>
-        <button type="button" class="btn btn-primary btn-lg" id="btnRequestClean">REQUEST MY FIRST CLEAN &rarr;</button>
-      </div>
-    `;
-  }
-
-  renderStep6OtherServices() {
-    const services = BUSINESS_CONFIG.exteriorServices;
-    const selected = this.state.otherServices || [];
-
-    return `
-      <h2 class="step-question-title">Anything else we can help with?</h2>
-      <p class="step-question-desc">We also offer one-off exterior cleaning. Selecting additional services does not change your regular window price—they are quoted separately.</p>
-
-      <div class="options-grid options-grid-2">
-        ${services.map(s => {
-          const isChecked = selected.includes(s.id);
-          return `
-            <label class="option-card ${isChecked ? 'selected' : ''}" style="cursor:pointer;">
-              <div>
-                <div class="option-card-label">${s.name}</div>
-                <div class="option-card-sub">${s.shortDesc}</div>
-              </div>
-              <input type="checkbox" class="checkOtherService" value="${s.id}" ${isChecked ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent-cyan);">
-            </label>
-          `;
-        }).join('')}
-      </div>
-
-      <div style="margin-top: 32px; display: flex; justify-content: space-between; align-items: center;">
-        <button type="button" class="btn btn-secondary" id="btnSkipOtherServices">No other services</button>
-        <button type="button" class="btn btn-primary" id="btnNextOtherServices">Continue to Details &rarr;</button>
-      </div>
-    `;
-  }
-
-  renderStep7Details() {
-    return `
-      <h2 class="step-question-title">Where should we carry out the clean?</h2>
-      <p class="step-question-desc">Please supply your property address and contact details so HYDREX can verify availability and confirm your clean.</p>
-
-      <form id="detailsForm" onsubmit="return false;">
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-          <div class="form-group">
-            <label for="inputName" class="form-label">Full Name *</label>
-            <input type="text" id="inputName" class="form-input" required value="${this.state.name || ''}" placeholder="e.g. Sarah Jenkins" autocomplete="name">
-            <div class="form-error-msg" id="nameError">Please enter your name.</div>
-          </div>
-          <div class="form-group">
-            <label for="inputPhone" class="form-label">Mobile Number *</label>
-            <input type="tel" id="inputPhone" class="form-input" required value="${this.state.phone || ''}" placeholder="e.g. 07123 456789" autocomplete="tel">
-            <div class="form-error-msg" id="phoneError">Please enter a valid contact phone number.</div>
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 2fr; gap: 16px;">
-          <div class="form-group">
-            <label for="inputHouse" class="form-label">House Number / Name *</label>
-            <input type="text" id="inputHouse" class="form-input" required value="${this.state.houseNumber || ''}" placeholder="e.g. 42 or Rose Cottage" autocomplete="address-line1">
-            <div class="form-error-msg" id="houseError">Required.</div>
-          </div>
-          <div class="form-group">
-            <label for="inputStreet" class="form-label">Street Name *</label>
-            <input type="text" id="inputStreet" class="form-input" required value="${this.state.street || ''}" placeholder="e.g. Ashbourne Road" autocomplete="address-line2">
-            <div class="form-error-msg" id="streetError">Please enter your street.</div>
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-          <div class="form-group">
-            <label for="inputDetailPostcode" class="form-label">Postcode *</label>
-            <input type="text" id="inputDetailPostcode" class="form-input" required value="${this.state.postcode || ''}" placeholder="e.g. DE22 3NE" autocomplete="postal-code">
-            <div class="form-error-msg" id="postcodeDetailError">Valid postcode required.</div>
-          </div>
-          <div class="form-group">
-            <label for="inputEmail" class="form-label">Email Address <span class="optional">(Optional)</span></label>
-            <input type="email" id="inputEmail" class="form-input" value="${this.state.email || ''}" placeholder="e.g. sarah@example.co.uk" autocomplete="email">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="inputNotes" class="form-label">Access or Property Notes <span class="optional">(Optional)</span></label>
-          <textarea id="inputNotes" class="form-textarea" rows="2" placeholder="e.g. Unlocked side gate, high level rear windows, dog in garden...">${this.state.notes || ''}</textarea>
-        </div>
-
-        <div style="text-align: right; margin-top: 24px;">
-          <button type="submit" class="btn btn-primary btn-lg" id="btnSubmitDetails">
-            Review & Send Request &rarr;
-          </button>
-        </div>
-      </form>
-    `;
-  }
-
-  renderStep8Summary() {
-    const calc = this.state.calculation;
-    const address = [this.state.houseNumber, this.state.street, this.state.postcode].filter(Boolean).join(', ');
-    const extrasText = calc.extrasSummaryText || 'None';
-
-    const selectedOther = (this.state.otherServices || [])
-      .map(id => {
-        const s = BUSINESS_CONFIG.exteriorServices.find(item => item.id === id);
-        return s ? s.name : id;
-      })
-      .filter(Boolean);
-
-    const whatsappUrl = buildWindowWhatsAppUrl({
-      name: this.state.name,
-      houseNumber: this.state.houseNumber,
-      street: this.state.street,
-      postcode: this.state.postcode,
-      propertyTitle: calc.propertyTitle,
-      frequency: calc.frequency,
-      extrasBreakdown: calc.extrasBreakdown,
-      totalPrice: calc.totalPrice,
-      isManual: calc.isManual,
-      otherServices: this.state.otherServices,
-      notes: this.state.notes,
-    });
-
-    return `
-      <h2 class="step-question-title">Summary of Your Request</h2>
-      <p class="step-question-desc">Review your details below. When you tap "SEND MY REQUEST VIA WHATSAPP", a pre-filled enquiry message will open in WhatsApp so HYDREX can confirm availability.</p>
-
-      <div class="quote-summary-box">
-        <div class="summary-row">
-          <span class="summary-label">Name</span>
-          <span class="summary-value">${this.state.name || 'Not provided'}</span>
-        </div>
-        <div class="summary-row">
-          <span class="summary-label">Address</span>
-          <span class="summary-value">${address || 'Not provided'}</span>
-        </div>
-        <div class="summary-row">
-          <span class="summary-label">Property</span>
-          <span class="summary-value">${calc.propertyTitle || 'Not specified'}</span>
-        </div>
-        <div class="summary-row">
-          <span class="summary-label">Cleaning Frequency</span>
-          <span class="summary-value">${calc.frequencyLabel || 'Every 4 weeks'}</span>
-        </div>
-        <div class="summary-row">
-          <span class="summary-label">Window Extras</span>
-          <span class="summary-value">${extrasText}</span>
-        </div>
-        <div class="summary-row">
-          <span class="summary-label">Regular Window Price</span>
-          <span class="summary-value summary-price-highlight">
-            ${calc.isManual ? 'Manual Quote Required' : `${calc.formattedPrice} (${calc.frequencyLabel})`}
-          </span>
-        </div>
-        ${selectedOther.length > 0 ? `
-          <div class="summary-row">
-            <span class="summary-label">Additional Services Requested</span>
-            <span class="summary-value">${selectedOther.join(', ')}</span>
-          </div>
-        ` : ''}
-        ${this.state.notes ? `
-          <div class="summary-row">
-            <span class="summary-label">Notes</span>
-            <span class="summary-value">${this.state.notes}</span>
-          </div>
-        ` : ''}
-      </div>
-
-      <div style="background-color:rgba(21,159,232,0.06);border:1px solid var(--accent-cyan-border);border-radius:var(--radius-sm);padding:14px 18px;margin-bottom:24px;font-size:0.88rem;color:var(--text-secondary);">
-        <strong>What happens next:</strong> Clicking below opens WhatsApp on your phone or computer with these details ready. You simply press send, and we confirm availability and your first clean date. No automatic appointments are made without your agreement.
-      </div>
-
-      <div style="display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-        <button type="button" class="btn btn-secondary" id="btnEditFromSummary">Edit Details</button>
-        <a href="${whatsappUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp btn-lg" id="btnSendWhatsApp">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-5.46-4.45-9.92-9.91-9.92zm5.74 14.12c-.24.67-1.39 1.29-1.93 1.34-.51.05-1.18.07-3.41-.85-2.86-1.19-4.7-4.1-4.84-4.29-.14-.19-1.16-1.54-1.16-2.94 0-1.4.73-2.09.99-2.37.26-.28.57-.35.77-.35.19 0 .39 0 .56.01.18.01.42-.07.66.5.24.58.83 2.02.9 2.17.07.15.12.33.02.53-.1.19-.15.31-.3.49-.15.17-.32.39-.46.52-.15.15-.31.31-.13.62.18.31.8 1.32 1.72 2.14 1.18 1.05 2.18 1.38 2.49 1.53.31.15.49.13.67-.08.19-.21.79-.92 1-1.24.21-.31.42-.26.71-.15.29.1 1.83.86 2.14 1.02.31.15.52.23.59.36.07.12.07.72-.17 1.39z"/></svg>
-          SEND MY REQUEST VIA WHATSAPP
-        </a>
+        <a class="btn btn-whatsapp btn-lg" id="btnRequestClean" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Ask about my quote on WhatsApp &rarr;</a>
       </div>
     `;
   }
@@ -529,15 +355,6 @@ export class HydrexQuoteWizard {
   renderExteriorFlow() {
     const services = BUSINESS_CONFIG.exteriorServices;
     const selected = this.state.otherServices || [];
-
-    const whatsappUrl = buildExteriorWhatsAppUrl({
-      name: this.state.name,
-      houseNumber: this.state.houseNumber,
-      street: this.state.street,
-      postcode: this.state.postcode,
-      services: this.state.otherServices,
-      notes: this.state.notes,
-    });
 
     this.container.innerHTML = `
       <div class="quote-wizard" id="quoteWizard">
@@ -550,7 +367,7 @@ export class HydrexQuoteWizard {
         <div class="quote-step-content">
           <h2 class="step-question-title">Request an Exterior Cleaning Quote</h2>
           <p class="step-question-desc">
-            Already have a window cleaner, or need a one-off exterior service? Select the services you need below. Photos sent via WhatsApp help us give you an exact fixed quote quickly.
+            Select a service and add your postcode. No email, account or contact form—send photos and any extra details in WhatsApp.
           </p>
 
           <form id="exteriorForm" onsubmit="return false;">
@@ -573,31 +390,10 @@ export class HydrexQuoteWizard {
               <div class="form-error-msg" id="extServicesError">Please select at least one exterior service.</div>
             </div>
 
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div class="form-group">
-                <label for="extName" class="form-label">Full Name *</label>
-                <input type="text" id="extName" class="form-input" required value="${this.state.name || ''}" placeholder="e.g. Mark Taylor">
-              </div>
-              <div class="form-group">
-                <label for="extPhone" class="form-label">Mobile Number *</label>
-                <input type="tel" id="extPhone" class="form-input" required value="${this.state.phone || ''}" placeholder="e.g. 07123 456789">
-              </div>
-            </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 2fr; gap: 16px;">
-              <div class="form-group">
-                <label for="extHouse" class="form-label">House Number / Name *</label>
-                <input type="text" id="extHouse" class="form-input" required value="${this.state.houseNumber || ''}" placeholder="e.g. 15">
-              </div>
-              <div class="form-group">
-                <label for="extStreet" class="form-label">Street Name *</label>
-                <input type="text" id="extStreet" class="form-input" required value="${this.state.street || ''}" placeholder="e.g. Kedleston Road">
-              </div>
-            </div>
-
             <div class="form-group" style="max-width: 320px;">
               <label for="extPostcode" class="form-label">Postcode *</label>
-              <input type="text" id="extPostcode" class="form-input" required value="${this.state.postcode || ''}" placeholder="e.g. DE22 1FL">
+              <input type="text" id="extPostcode" class="form-input" required value="${this.state.postcode || ''}" placeholder="e.g. DE22 1FL" autocomplete="postal-code">
+              <div class="form-error-msg" id="extPostcodeError">Please enter a valid UK postcode.</div>
             </div>
 
             <div class="form-group">
@@ -628,13 +424,7 @@ export class HydrexQuoteWizard {
     // Back button
     const btnBack = document.getElementById('btnBackStep');
     if (btnBack) {
-      btnBack.addEventListener('click', () => {
-        if (step === 6) {
-          this.setStep(5);
-        } else {
-          this.setStep(step - 1);
-        }
-      });
+      btnBack.addEventListener('click', () => this.setStep(step - 1));
     }
 
     // Switch to exterior
@@ -666,8 +456,6 @@ export class HydrexQuoteWizard {
       };
 
       if (form) form.addEventListener('submit', (e) => { e.preventDefault(); validateAndContinue(); });
-      const btn = document.getElementById('btnSubmitPostcode');
-      if (btn) btn.addEventListener('click', validateAndContinue);
     }
 
     // Step 2: Property Type
@@ -757,122 +545,12 @@ export class HydrexQuoteWizard {
     // Step 5: Result
     if (step === 5) {
       const btnEdit = document.getElementById('btnEditSelections');
-      const btnRequest = document.getElementById('btnRequestClean');
       const btnReset = document.getElementById('btnResetQuote');
 
       if (btnEdit) btnEdit.addEventListener('click', () => this.setStep(2));
-      if (btnRequest) btnRequest.addEventListener('click', () => this.setStep(6));
       if (btnReset) btnReset.addEventListener('click', () => this.setStep(1));
     }
 
-    // Step 6: Other Services
-    if (step === 6) {
-      const chks = this.container.querySelectorAll('.checkOtherService');
-      const btnSkip = document.getElementById('btnSkipOtherServices');
-      const btnNext = document.getElementById('btnNextOtherServices');
-
-      chks.forEach(chk => {
-        chk.addEventListener('change', () => {
-          chk.closest('.option-card').classList.toggle('selected', chk.checked);
-          const active = Array.from(chks).filter(c => c.checked).map(c => c.value);
-          this.state.otherServices = active;
-        });
-      });
-
-      if (btnSkip) {
-        btnSkip.addEventListener('click', () => {
-          this.state.otherServices = [];
-          this.setStep(7);
-        });
-      }
-
-      if (btnNext) {
-        btnNext.addEventListener('click', () => this.setStep(7));
-      }
-    }
-
-    // Step 7: Details Form
-    if (step === 7) {
-      const form = document.getElementById('detailsForm');
-      const inputName = document.getElementById('inputName');
-      const inputPhone = document.getElementById('inputPhone');
-      const inputHouse = document.getElementById('inputHouse');
-      const inputStreet = document.getElementById('inputStreet');
-      const inputPost = document.getElementById('inputDetailPostcode');
-      const inputEmail = document.getElementById('inputEmail');
-      const inputNotes = document.getElementById('inputNotes');
-
-      const validateAndContinue = () => {
-        let valid = true;
-
-        if (!inputName.value.trim()) {
-          document.getElementById('nameError').classList.add('visible');
-          inputName.classList.add('is-invalid');
-          valid = false;
-        } else {
-          document.getElementById('nameError').classList.remove('visible');
-          inputName.classList.remove('is-invalid');
-        }
-
-        if (!inputPhone.value.trim() || inputPhone.value.trim().length < 9) {
-          document.getElementById('phoneError').classList.add('visible');
-          inputPhone.classList.add('is-invalid');
-          valid = false;
-        } else {
-          document.getElementById('phoneError').classList.remove('visible');
-          inputPhone.classList.remove('is-invalid');
-        }
-
-        if (!inputHouse.value.trim()) {
-          document.getElementById('houseError').classList.add('visible');
-          inputHouse.classList.add('is-invalid');
-          valid = false;
-        } else {
-          document.getElementById('houseError').classList.remove('visible');
-          inputHouse.classList.remove('is-invalid');
-        }
-
-        if (!inputStreet.value.trim()) {
-          document.getElementById('streetError').classList.add('visible');
-          inputStreet.classList.add('is-invalid');
-          valid = false;
-        } else {
-          document.getElementById('streetError').classList.remove('visible');
-          inputStreet.classList.remove('is-invalid');
-        }
-
-        if (!isValidUkPostcode(inputPost.value.trim())) {
-          document.getElementById('postcodeDetailError').classList.add('visible');
-          inputPost.classList.add('is-invalid');
-          valid = false;
-        } else {
-          document.getElementById('postcodeDetailError').classList.remove('visible');
-          inputPost.classList.remove('is-invalid');
-        }
-
-        if (!valid) return;
-
-        this.state.name = inputName.value.trim();
-        this.state.phone = inputPhone.value.trim();
-        this.state.houseNumber = inputHouse.value.trim();
-        this.state.street = inputStreet.value.trim();
-        this.state.postcode = formatUkPostcode(inputPost.value.trim());
-        this.state.email = inputEmail ? inputEmail.value.trim() : '';
-        this.state.notes = inputNotes ? inputNotes.value.trim() : '';
-
-        this.setStep(8);
-      };
-
-      if (form) form.addEventListener('submit', (e) => { e.preventDefault(); validateAndContinue(); });
-      const btnSubmit = document.getElementById('btnSubmitDetails');
-      if (btnSubmit) btnSubmit.addEventListener('click', validateAndContinue);
-    }
-
-    // Step 8: Summary
-    if (step === 8) {
-      const btnEdit = document.getElementById('btnEditFromSummary');
-      if (btnEdit) btnEdit.addEventListener('click', () => this.setStep(7));
-    }
   }
 
   attachExteriorEvents() {
@@ -892,51 +570,44 @@ export class HydrexQuoteWizard {
     });
 
     const form = document.getElementById('exteriorForm');
-    const submitBtn = document.getElementById('btnSubmitExteriorQuote');
 
     const handleExteriorSubmit = () => {
       const selected = Array.from(chks).filter(c => c.checked).map(c => c.value);
-      const err = document.getElementById('extServicesError');
+      const servicesError = document.getElementById('extServicesError');
       if (selected.length === 0) {
-        err.classList.add('visible');
+        servicesError.classList.add('visible');
         return;
       }
-      err.classList.remove('visible');
+      servicesError.classList.remove('visible');
 
-      const name = document.getElementById('extName').value.trim();
-      const phone = document.getElementById('extPhone').value.trim();
-      const house = document.getElementById('extHouse').value.trim();
-      const street = document.getElementById('extStreet').value.trim();
-      const postcode = document.getElementById('extPostcode').value.trim();
+      const postcodeInput = document.getElementById('extPostcode');
+      const postcodeError = document.getElementById('extPostcodeError');
+      const postcode = postcodeInput.value.trim();
+      if (!isValidUkPostcode(postcode)) {
+        postcodeError.classList.add('visible');
+        postcodeInput.classList.add('is-invalid');
+        return;
+      }
+      postcodeError.classList.remove('visible');
+      postcodeInput.classList.remove('is-invalid');
+
       const notes = document.getElementById('extNotes').value.trim();
 
-      if (!name || !phone || !house || !street || !postcode) {
-        alert('Please complete all required fields (*)');
-        return;
-      }
-
-      this.state.name = name;
-      this.state.phone = phone;
-      this.state.houseNumber = house;
-      this.state.street = street;
       this.state.postcode = formatUkPostcode(postcode);
       this.state.notes = notes;
       this.state.otherServices = selected;
+      this.persistState();
 
       const url = buildExteriorWhatsAppUrl({
-        name,
-        houseNumber: house,
-        street,
-        postcode: formatUkPostcode(postcode),
+        postcode: this.state.postcode,
         services: selected,
         notes,
       });
 
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
     };
 
     if (form) form.addEventListener('submit', (e) => { e.preventDefault(); handleExteriorSubmit(); });
-    if (submitBtn) submitBtn.addEventListener('click', handleExteriorSubmit);
   }
 }
 

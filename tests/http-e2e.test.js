@@ -41,12 +41,7 @@ test('HTTP Server - Verifying All Routes on Port 3000', async (t) => {
     '/js/pricing-engine.js',
     '/js/calculator.js',
     '/js/main.js',
-    '/assets/images/hero-home.jpg',
-    '/assets/images/window-cleaning.jpg',
-    '/assets/images/gutter-fascia.jpg',
-    '/assets/images/pressure-washing.jpg',
-    '/assets/images/conservatory-cleaning.jpg',
-    '/assets/images/solar-panel-cleaning.jpg',
+    '/assets/brand/hydrex-logo.jpeg',
     '/assets/brand/favicon.svg'
   ];
 
@@ -57,4 +52,25 @@ test('HTTP Server - Verifying All Routes on Port 3000', async (t) => {
       assert.ok(res.body.length > 0, `Expected content for ${r}`);
     });
   }
+
+  await t.test('HTML pages provide keyboard navigation helpers', async () => {
+    const htmlRoutes = routes.filter(route => route === '/' || route.endsWith('.html'));
+
+    for (const route of htmlRoutes) {
+      const res = await fetchUrl(route);
+      assert.strictEqual(res.status, 200, `Expected 200 for ${route}`);
+      assert.match(res.body, /<a class="skip-link" href="#main-content">/i, `${route} should include a skip link`);
+      assert.match(res.body, /<main\b[^>]*id="main-content"[^>]*tabindex="-1"/i, `${route} should provide a focusable main target`);
+      assert.match(res.body, /<button\b[^>]*aria-controls="mainNav"[^>]*aria-expanded="false"/i, `${route} should expose mobile menu state`);
+    }
+  });
+
+  await t.test('Homepage shows the complete clean offer without the AI van image', async () => {
+    const res = await fetchUrl('/');
+    assert.strictEqual(res.status, 200);
+    assert.match(res.body, /3 bed semi-detached<\/td><td class="pricing-table-price">£120/);
+    const imageSources = [...res.body.matchAll(/<img\b[^>]*src="([^"]+)"/gi)].map((match) => match[1]);
+    assert.deepStrictEqual(imageSources, []);
+    assert.doesNotMatch(res.body, /hydrex-van\.jpeg/i);
+  });
 });

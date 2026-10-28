@@ -5,11 +5,11 @@
 
 :root {
   /* Color Palette */
-  --bg-primary: #07131D;
-  --bg-secondary: #0B1D2A;
-  --bg-surface: #102636;
-  --bg-surface-elevated: #163246;
-  --bg-surface-hover: #1c3d54;
+  --bg-primary: #07090D;
+  --bg-secondary: #10151B;
+  --bg-surface: #171F27;
+  --bg-surface-elevated: #202B35;
+  --bg-surface-hover: #293945;
 
   --accent-cyan: #159FE8;
   --accent-cyan-hover: #38b4f7;
@@ -81,6 +81,38 @@ a {
   text-decoration: none;
 }
 
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--accent-cyan-hover);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  padding: 12px 16px;
+  transform: translateY(calc(-100% - 16px));
+  border: 1px solid var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-weight: 600;
+  transition: transform var(--transition-fast);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+main[id] {
+  scroll-margin-top: var(--header-height);
+}
+
 button, input, select, textarea {
   font: inherit;
   color: inherit;
@@ -117,31 +149,41 @@ button, input, select, textarea {
 
 /* Typographic Logo / Wordmark */
 .brand-wordmark {
+  position: relative;
   display: inline-flex;
   flex-direction: column;
+  flex: 0 0 auto;
+  width: 230px;
+  height: 58px;
+  overflow: hidden;
   text-decoration: none;
   line-height: 1;
 }
 
-.brand-text {
-  font-size: 1.6rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: #FFFFFF;
-  text-transform: uppercase;
+.brand-wordmark::before {
+  position: absolute;
+  inset: 0;
+  background: url('/assets/brand/hydrex-logo.jpeg') center / cover no-repeat;
+  content: '';
+  mix-blend-mode: screen;
 }
 
-.brand-text .brand-accent {
-  color: var(--accent-cyan);
+.brand-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .brand-descriptor {
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  margin-top: 4px;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 /* Header & Navigation */
@@ -319,6 +361,22 @@ button, input, select, textarea {
   grid-template-columns: 1.15fr 0.85fr;
   gap: 48px;
   align-items: center;
+}
+
+.service-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.service-detail-grid-single {
+  grid-template-columns: minmax(0, 900px);
+  justify-content: center;
+}
+
+.service-detail-grid > * {
+  min-width: 0;
 }
 
 .hero-badge {
@@ -541,7 +599,7 @@ button, input, select, textarea {
 /* Services Grid */
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
   gap: 28px;
 }
 
@@ -636,7 +694,7 @@ button, input, select, textarea {
 /* Why HYDREX Grid */
 .benefits-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 28px;
 }
 
@@ -744,7 +802,7 @@ button, input, select, textarea {
 /* Architectural Gallery / Work Placeholders */
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 24px;
 }
 
@@ -1386,7 +1444,7 @@ button, input, select, textarea {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--border-strong);
-  padding: 12px 16px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
 }
 
@@ -1419,6 +1477,9 @@ button, input, select, textarea {
     grid-template-columns: 1fr;
     gap: 40px;
   }
+  .service-detail-grid {
+    grid-template-columns: 1fr;
+  }
   .value-strip-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 20px;
@@ -1443,7 +1504,50 @@ button, input, select, textarea {
   }
 
   body {
-    padding-bottom: 64px; /* for sticky mobile CTA */
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .hero-section {
+    padding: 48px 0;
+  }
+
+  .hero-grid {
+    gap: 28px;
+  }
+
+  .hero-title {
+    font-size: clamp(2rem, 8vw, 2.8rem);
+  }
+
+  .hero-highlight-points {
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .hero-point {
+    padding: 8px 10px;
+    font-size: 0.84rem;
+  }
+
+  .hero-actions > .btn-primary {
+    width: 100%;
+  }
+
+  .hero-actions > .btn-secondary {
+    display: none;
+  }
+
+  .hero-card {
+    display: none;
+  }
+
+  .gallery-image-wrap {
+    aspect-ratio: auto;
+  }
+
+  .gallery-image-wrap img {
+    height: auto;
+    object-fit: contain;
   }
 
   .nav-links {
@@ -1469,6 +1573,19 @@ button, input, select, textarea {
     display: none;
   }
 
+  .header-phone {
+    width: 42px;
+    height: 42px;
+    justify-content: center;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 0;
+  }
+
+  .header-phone-label {
+    display: none;
+  }
+
   .mobile-menu-btn {
     display: block;
   }
@@ -1490,6 +1607,31 @@ button, input, select, textarea {
     padding: 20px;
   }
 
+  .quote-step-indicator {
+    max-width: 65%;
+  }
+
+  .details-grid,
+  .exterior-details-grid,
+  .exterior-address-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  .quote-step-content .price-display-card {
+    padding: 24px 18px;
+  }
+
+  .quote-step-content .quote-actions {
+    flex-direction: column-reverse;
+    align-items: stretch !important;
+  }
+
+  .quote-step-content .quote-actions .btn {
+    width: 100%;
+    white-space: normal;
+  }
+
   .mobile-sticky-cta {
     display: block;
   }
@@ -1506,11 +1648,63 @@ button, input, select, textarea {
   }
 
   .value-strip-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .value-item {
+    padding: 8px;
+  }
+
+  .value-item-title {
+    font-size: 0.9rem;
+  }
+
+  .value-item-desc {
+    font-size: 0.76rem;
   }
 
   .steps-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .container,
+  .container-wide {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .brand-descriptor {
+    display: none;
+  }
+
+  .brand-wordmark {
+    width: 165px;
+    height: 42px;
+  }
+
+  .service-card {
+    padding: 22px;
+  }
+
+  .service-card-footer {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .mobile-sticky-cta {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .mobile-sticky-title {
+    font-size: 0.76rem;
+  }
+
+  .mobile-sticky-sub {
+    font-size: 0.67rem;
   }
 }

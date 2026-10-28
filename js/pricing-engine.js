@@ -169,22 +169,16 @@ export function calculateWindowPrice(propertyId, frequency, extras = {}) {
 export function buildWindowWhatsAppUrl(data) {
   const lines = [
     "Hi HYDREX, I'd like to request my first regular window clean.",
-    "",
-    "Name:",
-    data.name ? data.name.trim() : "[Not provided]",
-    "",
-    "Address:",
-    [data.houseNumber, data.street].filter(Boolean).join(" ") || "[Not provided]",
-    "",
-    "Postcode:",
-    data.postcode ? formatUkPostcode(data.postcode) : "[Not provided]",
-    "",
-    "Property:",
-    data.propertyTitle || data.propertyId || "[Not provided]",
-    "",
-    "Frequency:",
-    data.frequency === '8w' ? '8 WEEKLY' : '4 WEEKLY',
   ];
+
+  if (data.name && data.name.trim()) lines.push("", "Name:", data.name.trim());
+  const address = [data.houseNumber, data.street].filter(Boolean).join(" ");
+  if (address) lines.push("", "Address:", address);
+  if (data.postcode) lines.push("", "Postcode:", formatUkPostcode(data.postcode));
+  if (data.propertyTitle || data.propertyId) {
+    lines.push("", "Property:", data.propertyTitle || data.propertyId);
+  }
+  if (data.frequency) lines.push("", "Frequency:", data.frequency === '8w' ? '8 WEEKLY' : '4 WEEKLY');
 
   // Window extras
   const extrasText = data.extrasSummaryText || 
@@ -220,7 +214,7 @@ export function buildWindowWhatsAppUrl(data) {
     lines.push("", "Notes:", data.notes.trim());
   }
 
-  lines.push("", "Please confirm the property/details and availability.");
+  lines.push("", "Please confirm availability and let me know what details you need to arrange the clean.");
 
   const message = lines.join("\n");
   const phone = BUSINESS_CONFIG.contact.whatsappInternational;
@@ -235,16 +229,12 @@ export function buildWindowWhatsAppUrl(data) {
 export function buildExteriorWhatsAppUrl(data) {
   const lines = [
     "Hi HYDREX, I'd like to request an exterior cleaning quote.",
-    "",
-    "Name:",
-    data.name ? data.name.trim() : "[Not provided]",
-    "",
-    "Address:",
-    [data.houseNumber, data.street].filter(Boolean).join(" ") || "[Not provided]",
-    "",
-    "Postcode:",
-    data.postcode ? formatUkPostcode(data.postcode) : "[Not provided]",
   ];
+
+  if (data.name && data.name.trim()) lines.push("", "Name:", data.name.trim());
+  const address = [data.houseNumber, data.street].filter(Boolean).join(" ");
+  if (address) lines.push("", "Address:", address);
+  if (data.postcode) lines.push("", "Postcode:", formatUkPostcode(data.postcode));
 
   if (data.services && data.services.length > 0) {
     const validServices = data.services

@@ -127,7 +127,23 @@ test('WhatsApp Message Builder - Window Cleaning Format', () => {
   assert.match(decoded, /Website regular-clean price:\s*£21 \(4 weekly\)/);
   assert.match(decoded, /Other services I'm interested in:\s*Gutter Clearing/);
   assert.match(decoded, /Notes:\s*Access via side gate which is unlocked/);
-  assert.match(decoded, /Please confirm the property\/details and availability\./);
+  assert.match(decoded, /Please confirm availability and let me know what details you need to arrange the clean\./);
+});
+
+test('WhatsApp Message Builder - Minimal window quote needs no personal details', () => {
+  const url = buildWindowWhatsAppUrl({
+    postcode: 'DE22 3AB',
+    propertyTitle: '3 Bed Semi-Detached',
+    frequency: '4w',
+    totalPrice: 16,
+  });
+
+  const decoded = decodeURIComponent(url.replace('https://wa.me/447552907206?text=', ''));
+  assert.match(decoded, /Postcode:\s*DE22 3AB/);
+  assert.match(decoded, /Property:\s*3 Bed Semi-Detached/);
+  assert.match(decoded, /Frequency:\s*4 WEEKLY/);
+  assert.match(decoded, /Website regular-clean price:\s*£16 \(4 weekly\)/);
+  assert.doesNotMatch(decoded, /Name:|Address:|\[Not provided\]/);
 });
 
 test('WhatsApp Message Builder - Exterior Quote Format', () => {
